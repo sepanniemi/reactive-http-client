@@ -1,12 +1,20 @@
 package com.sepanniemi.http.client;
 
+import com.sepanniemi.http.client.configuration.CircuitProperties;
 import com.sepanniemi.http.client.content.CompletedResponse;
 import com.sepanniemi.http.client.content.JsonContentProvider;
 import com.sepanniemi.http.client.content.ResponseHandler;
 import com.sepanniemi.http.client.content.ResponseProcessor;
+import com.sepanniemi.http.client.error.Http4xxException;
+import com.sepanniemi.http.client.publisher.CancellableResponseListenerPublisher;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.operator.CircuitBreakerOperator;
 import io.reactivex.Single;
-import lombok.Builder;
-import lombok.SneakyThrows;
+import io.reactivex.SingleOperator;
+import lombok.*;
+import lombok.experimental.Accessors;
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.http.HttpMethod;
@@ -17,57 +25,56 @@ import org.eclipse.jetty.util.URIUtil;
 import org.reactivestreams.Publisher;
 
 import java.net.URI;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
-
+@Slf4j
 public class ReactiveHttpClient {
 
     private URI baseUrl;
 
     private final HttpClient httpClient;
 
+    private CircuitBreaker circuitBreaker;
+
     @Builder
     @SneakyThrows
-    public ReactiveHttpClient(URI baseUrl) {
+    private ReactiveHttpClient(URI baseUrl, CircuitBreaker circuitBreaker) {
         httpClient = new HttpClient();
         httpClient.start();
         this.baseUrl = baseUrl;
+        this.circuitBreaker = circuitBreaker;
     }
 
     @SneakyThrows
     public <T> Single<T> get(String path,
-                             ResponseHandler<T> parser) {
+                             ResponseHandler<T> responseParser) {
 
         ReactiveRequest reactiveRequest = ReactiveRequest
                 .newBuilder(newRequest(path, HttpMethod.GET))
                 .build();
 
-        Publisher<CompletedResponse> publisher = reactiveRequest.response(complete());
+        Publisher<CompletedResponse> publisher = CancellableResponseListenerPublisher.forRequest(reactiveRequest, complete());
 
-        return Single
-                .fromPublisher(publisher)
-                .map(parser::parseResponse);
-
+        return observe(responseParser, publisher);
     }
 
     @SneakyThrows
     public <T> Single<T> delete(String path,
-                                ResponseHandler<T> parser) {
+                                ResponseHandler<T> responseParser) {
 
         ReactiveRequest reactiveRequest = ReactiveRequest
                 .newBuilder(newRequest(path, HttpMethod.DELETE))
                 .build();
 
-        Publisher<CompletedResponse> publisher = reactiveRequest.response(complete());
+        Publisher<CompletedResponse> publisher = CancellableResponseListenerPublisher.forRequest(reactiveRequest, complete());
 
-        return Single
-                .fromPublisher(publisher)
-                .map(parser::parseResponse);
-
+        return observe(responseParser, publisher);
     }
 
-    public <T, I> Single<T> post(Class<T> type,
-                                 String path,
+    public <T, I> Single<T> post(String path,
                                  JsonContentProvider<I> contentProvider,
                                  ResponseHandler<T> responseParser) {
 
@@ -82,15 +89,26 @@ public class ReactiveHttpClient {
 
         Publisher<CompletedResponse> publisher = reactiveRequest.response(complete());
 
+        return observe(responseParser, publisher);
+    }
+
+    private <T> Single<T> observe(ResponseHandler<T> responseParser, Publisher<CompletedResponse> publisher) {
         return Single
                 .fromPublisher(publisher)
-                .map(responseParser::parseResponse);
+                .map(responseParser::parseResponse)
+                .lift(fused());
+    }
 
+    private <T> SingleOperator<T, T> fused() {
+        if (circuitBreaker != null) {
+            return CircuitBreakerOperator.of(circuitBreaker);
+        } else {
+            return downstream -> downstream;
+        }
     }
 
     @SneakyThrows
     private Request newRequest(String path, HttpMethod method) {
-
         return httpClient
                 .newRequest(URIUtil.addPath(baseUrl, path))
                 .method(method);
@@ -102,5 +120,36 @@ public class ReactiveHttpClient {
             content.subscribe(responseProcessor);
             return responseProcessor;
         };
+    }
+
+    @lombok.Builder
+    public static class ConfigurableCircuitBreaker {
+
+        private String name;
+        @Singular
+        private Set<Class<? extends Throwable>> ignoredExceptions = new HashSet<Class<? extends Throwable>>(){{
+            add(Http4xxException.class);
+        }};
+        private CircuitProperties circuitProperties = new CircuitProperties();
+
+        public CircuitBreaker getCircuitBreaker() {
+            CircuitBreakerConfig config = new CircuitBreakerConfig.Builder()
+                    .recordFailure(shouldRecord())
+                    .failureRateThreshold(circuitProperties.getFailureRateThreshold())
+                    .ringBufferSizeInClosedState(circuitProperties.getRingBufferSizeInClosedState())
+                    .waitDurationInOpenState(circuitProperties.getWaitDurationInOpenState())
+                    .build();
+
+            return CircuitBreaker.of(name, config);
+
+        }
+
+        private Predicate<Throwable> shouldRecord() {
+            return throwable -> {
+                boolean failure = !ignoredExceptions.contains(throwable.getClass());
+                log.debug("Circuit breaker handling failure={}, failure recorded={}", throwable, failure);
+                return failure;
+            };
+        }
     }
 }

@@ -5,6 +5,7 @@ import org.eclipse.jetty.http.HttpField;
 import org.eclipse.jetty.reactive.client.ContentChunk;
 import org.eclipse.jetty.reactive.client.ReactiveResponse;
 import org.eclipse.jetty.reactive.client.internal.AbstractSingleProcessor;
+import org.reactivestreams.Subscription;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -68,5 +69,14 @@ public class ResponseProcessor extends AbstractSingleProcessor<ContentChunk, Com
         }
 
         super.onComplete();
+    }
+
+    @Override
+    public void cancel() {
+        try {
+            super.cancel();
+        } catch (NullPointerException e) {
+            log.debug("Upstream not available");
+        }
     }
 }

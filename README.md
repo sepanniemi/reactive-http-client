@@ -6,4 +6,4 @@ Supports circuit breaking with https://github.com/resilience4j/resilience4j Circ
 
 Far from being tested or ready to be used in action.
 
-The project can be build with ```./mvnw clean install``` or ```./mvnw.cmd clean instal``` if you happend to run in Windows environment.
+The project can be build with ```./mvnw clean install``` or ```./mvnw.cmd clean install``` if you happend to run in Windows environment.

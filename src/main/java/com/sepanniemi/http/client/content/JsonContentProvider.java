@@ -21,7 +21,7 @@ import java.util.Map;
 @Value
 public class JsonContentProvider<T> implements ContentProvider{
 
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     private T content;
 

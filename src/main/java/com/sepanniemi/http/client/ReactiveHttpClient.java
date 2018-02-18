@@ -1,6 +1,7 @@
 package com.sepanniemi.http.client;
 
 import com.sepanniemi.http.client.configuration.CircuitProperties;
+import com.sepanniemi.http.client.configuration.ClientProperties;
 import com.sepanniemi.http.client.content.CompletedResponse;
 import com.sepanniemi.http.client.content.JsonContentProvider;
 import com.sepanniemi.http.client.content.ResponseHandler;
@@ -12,10 +13,12 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.operator.CircuitBreakerOperator;
 import io.reactivex.Single;
 import io.reactivex.SingleOperator;
-import lombok.*;
-import lombok.experimental.Accessors;
+import lombok.Builder;
+import lombok.Singular;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.client.ProxyConfiguration;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.reactive.client.ContentChunk;
@@ -27,6 +30,7 @@ import org.reactivestreams.Publisher;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
@@ -39,13 +43,42 @@ public class ReactiveHttpClient {
 
     private CircuitBreaker circuitBreaker;
 
+    @Builder.Default
+    private ClientProperties clientProperties = new ClientProperties();
+
+
     @Builder
     @SneakyThrows
-    private ReactiveHttpClient(URI baseUrl, CircuitBreaker circuitBreaker) {
+    private ReactiveHttpClient(URI baseUrl,
+                               ClientProperties clientProperties,
+                               CircuitBreaker circuitBreaker) {
+
         httpClient = new HttpClient();
+        if( clientProperties != null ){
+            this.clientProperties = clientProperties;
+        }
+        httpClient.setConnectTimeout(this.clientProperties.getConnectionTimeout());
         httpClient.start();
         this.baseUrl = baseUrl;
         this.circuitBreaker = circuitBreaker;
+    }
+
+    /**
+     * Gets the current proxy configuration to allow setting up proxy rules.
+     *
+     * @return Http client proxy configuration.
+     */
+    public ProxyConfiguration getProxyConfiguration() {
+        return httpClient.getProxyConfiguration();
+    }
+
+    /**
+     * Gets the configured http client to allow direct customization of the client.
+     *
+     * @return Http client.
+     */
+    public HttpClient getHttpClient() {
+        return httpClient;
     }
 
     @SneakyThrows
@@ -111,6 +144,7 @@ public class ReactiveHttpClient {
     private Request newRequest(String path, HttpMethod method) {
         return httpClient
                 .newRequest(URIUtil.addPath(baseUrl, path))
+                .timeout(clientProperties.getRequestTimeout(), TimeUnit.MILLISECONDS)
                 .method(method);
     }
 
@@ -127,7 +161,7 @@ public class ReactiveHttpClient {
 
         private String name;
         @Singular
-        private Set<Class<? extends Throwable>> ignoredExceptions = new HashSet<Class<? extends Throwable>>(){{
+        private Set<Class<? extends Throwable>> ignoredExceptions = new HashSet<Class<? extends Throwable>>() {{
             add(Http4xxException.class);
         }};
         private CircuitProperties circuitProperties = new CircuitProperties();

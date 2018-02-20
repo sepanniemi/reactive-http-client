@@ -7,10 +7,7 @@ import java.util.Map;
 /**
  * Created by sepanniemi on 08/02/2018.
  */
-public interface ContentProvider {
+public interface ContentBodyProvider extends ContentProvider {
 
-    Map<String,String> getHeaders();
-
-    Map<String,String> getParameters();
-
+    ReactiveRequest.Content getContent();
 }

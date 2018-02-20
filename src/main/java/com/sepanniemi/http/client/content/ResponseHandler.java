@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sepanniemi.http.client.error.Http4xxException;
 import com.sepanniemi.http.client.error.Http5xxException;
 import com.sepanniemi.http.client.error.HttpException;
+import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -11,14 +12,11 @@ import lombok.extern.slf4j.Slf4j;
  * Created by sepanniemi on 07/02/2018.
  */
 @Slf4j
+@Data
 public class ResponseHandler<T> {
 
     private final Class<T> type;
     private ObjectMapper objectMapper = new ObjectMapper();
-
-    public ResponseHandler(Class<T> type) {
-        this.type = type;
-    }
 
     @SneakyThrows
     public T parseResponse(CompletedResponse response) {

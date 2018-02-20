@@ -18,17 +18,18 @@ import java.util.Map;
 
 
 @Builder
-@Value
-public class JsonContentProvider<T> implements ContentProvider{
+public class JsonContentProvider<T> implements ContentBodyProvider {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    private T content;
-
     private ClientContext clientContext;
+
+    private T content;
 
     @Singular
     private Map<String,String> headers = new HashMap<>();
+    @Singular
+    private Map<String,String> parameters = new HashMap<>();
 
     @Override
     public Map<String,String> getHeaders(){
@@ -37,6 +38,11 @@ public class JsonContentProvider<T> implements ContentProvider{
             merged.putAll(clientContext.getHeaders());
         }
         return merged;
+    }
+
+    @Override
+    public Map<String, String> getParameters() {
+        return parameters;
     }
 
     @Override

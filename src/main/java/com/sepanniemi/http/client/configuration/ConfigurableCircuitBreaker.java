@@ -1,6 +1,5 @@
 package com.sepanniemi.http.client.configuration;
 
-import com.sepanniemi.http.client.configuration.CircuitProperties;
 import com.sepanniemi.http.client.error.Http4xxException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
@@ -16,15 +15,25 @@ import java.util.function.Predicate;
  * Created by sepanniemi on 20/02/2018.
  */
 @Slf4j
-@Builder
+
 public class ConfigurableCircuitBreaker {
 
     private String name;
+
     @Singular
-    private Set<Class<? extends Throwable>> ignoredExceptions = new HashSet<Class<? extends Throwable>>() {{
-        add(Http4xxException.class);
-    }};
-    private CircuitProperties circuitProperties = new CircuitProperties();
+    private Set<Class<? extends Throwable>> ignoredExceptions;
+
+    @Builder
+    public ConfigurableCircuitBreaker(String name, Set<Class<? extends Throwable>> ignoredExceptions, CircuitProperties circuitProperties) {
+        this.name = name != null ? name : "http-client-circuit";
+        this.ignoredExceptions = ignoredExceptions != null ? ignoredExceptions : new HashSet<>();
+        this.ignoredExceptions.add(Http4xxException.class);
+        this.circuitProperties = circuitProperties != null ? circuitProperties : new CircuitProperties();
+
+    }
+
+    @Builder.Default
+    private CircuitProperties circuitProperties;
 
     public CircuitBreaker getCircuitBreaker() {
         CircuitBreakerConfig config = new CircuitBreakerConfig.Builder()

@@ -20,6 +20,7 @@ import java.util.Map;
 @Builder
 public class JsonContentProvider<T> implements ContentBodyProvider {
 
+    @Builder.Default
     private ObjectMapper objectMapper = new ObjectMapper();
 
     private ClientContext clientContext;

@@ -1,7 +1,5 @@
 package com.sepanniemi.http.client.content;
 
-import org.eclipse.jetty.reactive.client.ReactiveRequest;
-
 import java.util.Map;
 
 /**

@@ -1,6 +1,7 @@
 package com.sepanniemi.http.client.publisher;
 
 import io.reactivex.internal.subscriptions.EmptySubscription;
+import org.eclipse.jetty.client.api.Result;
 import org.eclipse.jetty.reactive.client.ContentChunk;
 import org.eclipse.jetty.reactive.client.ReactiveRequest;
 import org.eclipse.jetty.reactive.client.ReactiveResponse;
@@ -21,6 +22,16 @@ public class CancellableResponseListenerPublisher<T> extends ResponseListenerPub
 
     private CancellableResponseListenerPublisher(ReactiveRequest request, BiFunction<ReactiveResponse, Publisher<ContentChunk>, Publisher<T>> contentFn) {
         super(request, contentFn);
+    }
+
+    @Override
+    public void onComplete(Result result) {
+        if (result.isSucceeded()) {
+            super.onComplete(result);
+        } else {
+//            content.fail(result.getFailure());
+            downStream().onError(result.getFailure());
+        }
     }
 
     @Override

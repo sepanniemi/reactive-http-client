@@ -19,6 +19,8 @@ import org.eclipse.jetty.reactive.client.ReactiveRequest;
 import org.eclipse.jetty.reactive.client.ReactiveResponse;
 import org.eclipse.jetty.util.URIUtil;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
@@ -98,15 +100,15 @@ public class ReactiveHttpClient {
     }
 
     public <T> Single<T> put(String path,
-                              ContentBodyProvider contentProvider,
-                              ResponseHandler<T> responseParser) {
+                             ContentBodyProvider contentProvider,
+                             ResponseHandler<T> responseParser) {
 
         return send(responseParser, newReactiveRequestWithBody(path, HttpMethod.PUT.name(), contentProvider));
     }
 
     public <T> Single<T> patch(String path,
-                             ContentBodyProvider contentProvider,
-                             ResponseHandler<T> responseParser) {
+                               ContentBodyProvider contentProvider,
+                               ResponseHandler<T> responseParser) {
 
         return send(responseParser, newReactiveRequestWithBody(path, PATCH, contentProvider));
     }
@@ -114,18 +116,66 @@ public class ReactiveHttpClient {
     private ReactiveRequest newReactiveRequestWithBody(String path,
                                                        String method,
                                                        ContentBodyProvider contentProvider) {
-        return ReactiveRequest
+        ReactiveRequest reactiveRequest = ReactiveRequest
                 .newBuilder(newRequest(path, method, contentProvider))
                 .content(contentProvider.getContent())
                 .build();
+
+        reactiveRequest.requestEvents().subscribe(new Subscriber<ReactiveRequest.Event>() {
+            @Override
+            public void onSubscribe(Subscription s) {
+
+            }
+
+            @Override
+            public void onNext(ReactiveRequest.Event event) {
+
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                log.error("Failed!");
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        });
+
+        return reactiveRequest;
     }
 
     private ReactiveRequest newReactiveRequest(String method,
                                                String path,
                                                ContentProvider contentProvider) {
-        return ReactiveRequest
-                .newBuilder(newRequest(path, method, contentProvider))
-                .build();
+        ReactiveRequest reactiveRequest =
+                ReactiveRequest
+                        .newBuilder(newRequest(path, method, contentProvider))
+                        .build();
+        reactiveRequest.requestEvents().subscribe(new Subscriber<ReactiveRequest.Event>() {
+            @Override
+            public void onSubscribe(Subscription s) {
+
+            }
+
+            @Override
+            public void onNext(ReactiveRequest.Event event) {
+
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                log.error("Failed!");
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        });
+
+        return reactiveRequest;
     }
 
     private <T> Single<T> send(ResponseHandler<T> responseParser,

@@ -16,7 +16,7 @@ public class ClientProperties {
     private int connectionTimeout = 10000;
 
     /**
-     * Timeout for handling the request.
+     * Timeout for handling the request - response in milliseconds.
      */
     private int requestTimeout = 5000;
 }

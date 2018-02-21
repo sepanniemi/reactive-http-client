@@ -1,8 +1,11 @@
 package com.sepanniemi.http;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.global.RequestDelaySpec;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.sepanniemi.http.client.ReactiveHttpClient;
 import com.sepanniemi.http.client.configuration.CircuitProperties;
+import com.sepanniemi.http.client.configuration.ClientProperties;
 import com.sepanniemi.http.client.configuration.ConfigurableCircuitBreaker;
 import com.sepanniemi.http.client.content.JsonContentProvider;
 import com.sepanniemi.http.client.content.ResponseHandler;
@@ -20,7 +23,10 @@ import lombok.SneakyThrows;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.util.concurrent.TimeoutException;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
@@ -87,7 +93,7 @@ public class RxHttpClientTests {
 
     @Test
     @SneakyThrows
-    public void testGetFailure() {
+    public void testGetBadRequest() {
         wireMockRule.stubFor(any(urlEqualTo("/test")).willReturn(aResponse().withStatus(400).withBody("{\"error\":\"bad_request\"}")));
 
         Single<FooBar> foo = reactiveHttpClient.get("/test", SimpleContentProvider.builder().build(), parser);
@@ -97,6 +103,81 @@ public class RxHttpClientTests {
         testSubscriber.awaitTerminalEvent();
         testSubscriber.assertError(Http4xxException.class);
     }
+
+    @Test
+    @SneakyThrows
+    public void testGetNotFound() {
+
+        Single<FooBar> foo = reactiveHttpClient.get("/not_found", SimpleContentProvider.builder().build(), parser);
+
+        TestObserver<FooBar> testSubscriber = new TestObserver<>();
+        foo.toObservable().subscribe(testSubscriber);
+        testSubscriber.awaitTerminalEvent();
+        testSubscriber.assertError(Http4xxException.class);
+    }
+
+    @Test
+    @SneakyThrows
+    public void testConnectionTimeoutFailure() {
+        wireMockRule.addSocketAcceptDelay(new RequestDelaySpec(5000));
+
+        ReactiveHttpClient reactiveHttpClient =
+                ReactiveHttpClient
+                        .builder()
+                        .baseUrl(URI.create("http://localhost:8889"))
+                        .clientProperties(new ClientProperties().setConnectionTimeout(0))
+                        .build();
+
+        Single<FooBar> foo = reactiveHttpClient.get("/test", SimpleContentProvider.builder().build(), parser);
+
+        TestObserver<FooBar> testSubscriber = new TestObserver<>();
+        foo.toObservable().subscribe(testSubscriber);
+        testSubscriber.awaitTerminalEvent();
+        testSubscriber.assertError(SocketTimeoutException.class);
+    }
+
+
+    @Test
+    @SneakyThrows
+    public void testRequestTimeoutFailure() {
+        wireMockRule.stubFor(any(urlEqualTo("/test")).willReturn(
+                aResponse()
+                        .withStatus(200)
+                        .withFixedDelay(3000)));
+
+        ReactiveHttpClient reactiveHttpClient =
+                ReactiveHttpClient
+                        .builder()
+                        .baseUrl(URI.create("http://localhost:8888"))
+                        .clientProperties(new ClientProperties().setRequestTimeout(1000))
+                        .build();
+
+        Single<FooBar> foo = reactiveHttpClient.get("/test", SimpleContentProvider.builder().build(), parser);
+
+        TestObserver<FooBar> testSubscriber = new TestObserver<>();
+        foo.toObservable().subscribe(testSubscriber);
+        testSubscriber.awaitTerminalEvent();
+        testSubscriber.assertError(TimeoutException.class);
+    }
+
+    @Test
+    @SneakyThrows
+    public void testConnectionRefusedFailure() {
+
+        ReactiveHttpClient reactiveHttpClient =
+                ReactiveHttpClient
+                        .builder()
+                        .baseUrl(URI.create("http://localhost:1001"))
+                        .build();
+
+        Single<FooBar> foo = reactiveHttpClient.get("/not_found", SimpleContentProvider.builder().build(), parser);
+
+        TestObserver<FooBar> testSubscriber = new TestObserver<>();
+        foo.toObservable().subscribe(testSubscriber);
+        testSubscriber.awaitTerminalEvent();
+        testSubscriber.assertError(ConnectException.class);
+    }
+
 
     @Test
     @SneakyThrows

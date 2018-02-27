@@ -11,7 +11,7 @@ import java.util.Map;
  * Created by sepanniemi on 20/02/2018.
  */
 @Builder
-public class SimpleContentProvider implements ContentProvider{
+public class SimpleRequestContentProvider implements RequestContentProvider {
 
     private ClientContext clientContext;
 

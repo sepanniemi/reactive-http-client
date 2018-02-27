@@ -16,20 +16,21 @@
         <java.version>1.8</java.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <jetty-reactive-httpclient.version>0.9.1</jetty-reactive-httpclient.version>
+        <jetty-client.version>9.4.7.v20170914</jetty-client.version>
         <rxjava-version>2.1.0</rxjava-version>
         <jackson.version>2.8.8</jackson.version>
         <lombok.version>1.16.20</lombok.version>
         <junit.version>4.12</junit.version>
         <assertj.version>3.6.2</assertj.version>
         <wiremock.version>1.58</wiremock.version>
+        <commons-io.version>2.5</commons-io.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-reactive-httpclient</artifactId>
-            <version>${jetty-reactive-httpclient.version}</version>
+            <artifactId>jetty-client</artifactId>
+            <version>${jetty-client.version}</version>
         </dependency>
 
         <dependency>
@@ -52,6 +53,11 @@
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io.version}</version>
         </dependency>
 
         <!-- Resilience4j -->

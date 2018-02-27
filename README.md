@@ -1,6 +1,6 @@
 # Reactive Http Client implementation
 
-Proof of concept implementation of wrapper for ```jetty-reactive-httpclient``` and ```rxjava2``` to be used in a real world use case to consume HTTP JSON APIs.
+Proof of concept implementation of a ```rxjava2``` wrapper for ```jetty-client``` to be used in a real world use case to consume HTTP JSON APIs.
 
 Supports circuit breaking with https://github.com/resilience4j/resilience4j Circuit Breaker
 

@@ -2,23 +2,20 @@ package com.sepanniemi.http.client.content;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sepanniemi.http.client.context.ClientContext;
-import io.reactivex.Flowable;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.SneakyThrows;
-import lombok.Value;
-import org.eclipse.jetty.reactive.client.ContentChunk;
-import org.eclipse.jetty.reactive.client.ReactiveRequest;
-import org.reactivestreams.Publisher;
+import org.eclipse.jetty.client.api.ContentProvider;
+import org.eclipse.jetty.client.util.BytesContentProvider;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.Optional;
 
 @Builder
-public class JsonContentProvider<T> implements ContentBodyProvider {
+public class JsonRequestContentProvider<T> implements RequestContentProvider {
+
+    public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json;charset=UTF-8";
 
     @Builder.Default
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -47,18 +44,10 @@ public class JsonContentProvider<T> implements ContentBodyProvider {
     }
 
     @Override
-    public ReactiveRequest.Content getContent() {
-        return ReactiveRequest.Content.fromPublisher(provide(),
-                "application/json",
-                StandardCharsets.UTF_8);
+    public Optional<ContentProvider.Typed> getContent() {
+        return Optional.of(new BytesContentProvider(APPLICATION_JSON_CHARSET_UTF_8, writeBytes(content)));
     }
 
-    private Publisher<ContentChunk> provide() {
-        return Flowable.just(content)
-                .map(this::writeBytes)
-                .map(ByteBuffer::wrap)
-                .map(ContentChunk::new);
-    }
 
     @SneakyThrows
     private byte[] writeBytes(T content) {

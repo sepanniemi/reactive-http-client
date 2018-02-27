@@ -11,10 +11,9 @@ import java.util.Map;
  */
 @Builder
 @Value
-public class CompletedResponse {
+public class CompletedResponse<T> {
     private int status;
-    private String reason;
-    private byte[] body;
+    private T body;
     @Singular
     private Map<String,String> headers;
 }

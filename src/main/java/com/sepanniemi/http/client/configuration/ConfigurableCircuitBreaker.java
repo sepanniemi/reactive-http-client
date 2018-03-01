@@ -15,7 +15,6 @@ import java.util.function.Predicate;
  * Created by sepanniemi on 20/02/2018.
  */
 @Slf4j
-
 public class ConfigurableCircuitBreaker {
 
     private String name;

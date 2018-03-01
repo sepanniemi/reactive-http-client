@@ -4,13 +4,11 @@ import com.github.tomakehurst.wiremock.global.RequestDelaySpec;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.sepanniemi.http.client.ReactiveHttpClient;
 import com.sepanniemi.http.client.configuration.CircuitProperties;
+import com.sepanniemi.http.client.configuration.ClientConfiguration;
 import com.sepanniemi.http.client.configuration.ClientProperties;
 import com.sepanniemi.http.client.configuration.ConfigurableCircuitBreaker;
 import com.sepanniemi.http.client.content.CompletedResponse;
-import com.sepanniemi.http.client.content.JsonRequestContentProvider;
-import com.sepanniemi.http.client.content.ResponseHandler;
-import com.sepanniemi.http.client.content.SimpleRequestContentProvider;
-import com.sepanniemi.http.client.context.ClientContext;
+import com.sepanniemi.http.client.content.Headers;
 import com.sepanniemi.http.client.error.Http4xxException;
 import com.sepanniemi.http.client.error.Http5xxException;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerOpenException;
@@ -35,8 +33,6 @@ public class RxHttpClientTests {
     @Rule
     public WireMockRule wireMockRule = new WireMockRule(8888);
 
-    private ResponseHandler<FooBar> parser = new ResponseHandler<>(FooBar.class);
-
     private ReactiveHttpClient reactiveHttpClient =
             ReactiveHttpClient
                     .builder()
@@ -57,8 +53,11 @@ public class RxHttpClientTests {
                         .withStatus(200)
                         .withBody("{\"foo\":\"bar\"}")));
 
-        Single<FooBar> foo = reactiveHttpClient.get("/test", SimpleRequestContentProvider.builder().build(), parser)
-                .map(CompletedResponse::getBody);
+        Single<FooBar> foo =
+                reactiveHttpClient
+                        .get("/test")
+                        .response(FooBar.class)
+                        .map(CompletedResponse::getBody);
 
         TestObserver<FooBar> testSubscriber = new TestObserver<>();
         foo.toObservable().subscribe(testSubscriber);
@@ -78,16 +77,13 @@ public class RxHttpClientTests {
                                 .withStatus(200)
                                 .withBody("{\"foo\":\"bar\"}")));
 
-        JsonRequestContentProvider<FooBar> fooToPost =
-                JsonRequestContentProvider.<FooBar>builder()
-                        .content(new FooBar("special foo"))
-                        .clientContext(ClientContext
-                                .builder()
-                                .header("x-y", "1234")
-                                .build())
-                        .build();
-        Single<FooBar> foo = reactiveHttpClient.post("/test", fooToPost, parser)
-                .map(CompletedResponse::getBody);
+        Single<FooBar> foo =
+                reactiveHttpClient
+                        .post("/test")
+                        .headers(Headers.builder().header("x-y", "1234").build())
+                        .json(new FooBar("special foo"))
+                        .response(FooBar.class)
+                        .map(CompletedResponse::getBody);
 
         TestObserver<FooBar> testSubscriber = new TestObserver<>();
         foo.toObservable().subscribe(testSubscriber);
@@ -101,8 +97,11 @@ public class RxHttpClientTests {
     public void testGetBadRequest() {
         wireMockRule.stubFor(any(urlEqualTo("/test")).willReturn(aResponse().withStatus(400).withBody("{\"error\":\"bad_request\"}")));
 
-        Single<FooBar> foo = reactiveHttpClient.get("/test", SimpleRequestContentProvider.builder().build(), parser)
-                .map(CompletedResponse::getBody);
+        Single<FooBar> foo =
+                reactiveHttpClient
+                        .get("/test")
+                        .response(FooBar.class)
+                        .map(CompletedResponse::getBody);
 
         TestObserver<FooBar> testSubscriber = new TestObserver<>();
         foo.toObservable().subscribe(testSubscriber);
@@ -114,8 +113,11 @@ public class RxHttpClientTests {
     @SneakyThrows
     public void testGetNotFound() {
 
-        Single<FooBar> foo = reactiveHttpClient.get("/not_found", SimpleRequestContentProvider.builder().build(), parser)
-                .map(CompletedResponse::getBody);
+        Single<FooBar> foo =
+                reactiveHttpClient
+                        .get("/not_found")
+                        .response(FooBar.class)
+                        .map(CompletedResponse::getBody);
 
         TestObserver<FooBar> testSubscriber = new TestObserver<>();
         foo.toObservable().subscribe(testSubscriber);
@@ -132,11 +134,17 @@ public class RxHttpClientTests {
                 ReactiveHttpClient
                         .builder()
                         .baseUrl(URI.create("http://localhost:8889"))
-                        .clientProperties(new ClientProperties().setConnectionTimeout(0))
+                        .clientConfiguration(
+                                ClientConfiguration.builder().clientProperties(
+                                        new ClientProperties().setConnectionTimeout(0))
+                                        .build())
                         .build();
 
-        Single<FooBar> foo = reactiveHttpClient.get("/test", SimpleRequestContentProvider.builder().build(), parser)
-                .map(CompletedResponse::getBody);
+        Single<FooBar> foo =
+                reactiveHttpClient
+                        .get("/test")
+                        .response(FooBar.class)
+                        .map(CompletedResponse::getBody);
 
         TestObserver<FooBar> testSubscriber = new TestObserver<>();
         foo.toObservable().subscribe(testSubscriber);
@@ -157,11 +165,17 @@ public class RxHttpClientTests {
                 ReactiveHttpClient
                         .builder()
                         .baseUrl(URI.create("http://localhost:8888"))
-                        .clientProperties(new ClientProperties().setRequestTimeout(1000))
+                        .clientConfiguration(
+                                ClientConfiguration.builder().clientProperties(
+                                        new ClientProperties().setRequestTimeout(1000))
+                                        .build())
                         .build();
 
-        Single<FooBar> foo = reactiveHttpClient.get("/test", SimpleRequestContentProvider.builder().build(), parser)
-                .map(CompletedResponse::getBody);
+        Single<FooBar> foo =
+                reactiveHttpClient
+                        .get("/test")
+                        .response(FooBar.class)
+                        .map(CompletedResponse::getBody);
 
         TestObserver<FooBar> testSubscriber = new TestObserver<>();
         foo.toObservable().subscribe(testSubscriber);
@@ -179,8 +193,11 @@ public class RxHttpClientTests {
                         .baseUrl(URI.create("http://localhost:1001"))
                         .build();
 
-        Single<FooBar> foo = reactiveHttpClient.get("/not_found", SimpleRequestContentProvider.builder().build(), parser)
-                .map(CompletedResponse::getBody);
+        Single<FooBar> foo =
+                reactiveHttpClient
+                        .get("/test")
+                        .response(FooBar.class)
+                        .map(CompletedResponse::getBody);
 
         TestObserver<FooBar> testSubscriber = new TestObserver<>();
         foo.toObservable().subscribe(testSubscriber);
@@ -195,8 +212,11 @@ public class RxHttpClientTests {
         wireMockRule.stubFor(any(urlEqualTo("/test")).willReturn(aResponse().withStatus(500).withBody("{\"error\":\"server_error\"}")));
 
         //One
-        Single<FooBar> foo = reactiveHttpClient.get("/test", SimpleRequestContentProvider.builder().build(), parser)
-                .map(CompletedResponse::getBody);
+        Single<FooBar> foo =
+                reactiveHttpClient
+                        .get("/test")
+                        .response(FooBar.class)
+                        .map(CompletedResponse::getBody);
 
         TestObserver<FooBar> testSubscriber = new TestObserver<>();
         foo.subscribe(testSubscriber);
@@ -204,7 +224,9 @@ public class RxHttpClientTests {
         testSubscriber.assertError(Http5xxException.class);
 
         //Two
-        foo = reactiveHttpClient.get("/test", SimpleRequestContentProvider.builder().build(), parser)
+        foo = reactiveHttpClient
+                .get("/test")
+                .response(FooBar.class)
                 .map(CompletedResponse::getBody);
 
         testSubscriber = new TestObserver<>();
@@ -213,7 +235,9 @@ public class RxHttpClientTests {
         testSubscriber.assertError(Http5xxException.class);
 
         //Broken
-        foo = reactiveHttpClient.get("/test", SimpleRequestContentProvider.builder().build(), parser)
+        foo = reactiveHttpClient
+                .get("/test")
+                .response(FooBar.class)
                 .map(CompletedResponse::getBody);
 
         testSubscriber = new TestObserver<>();

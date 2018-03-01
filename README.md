@@ -23,18 +23,16 @@ ReactiveHttpClient reactiveHttpClient =
 Sending request
 
 ```java
-
-ResponseHandler<MyResponseBody> responseHandler = new ResponseHandler<>(MyResponseBody.class);
-
-JsonContentProvider<MyRequestBody> content =
-                JsonContentProvider.<MyRequestBody>builder()
-                        .content(new MyRequestBody())
-                        .clientContext(ClientContext
-                                .builder()
-                                .header("header-x", "value-x")
-                                .build())
-                        .build();
-Single<MyResponseBody> response = reactiveHttpClient.post("/myobjects", content, responseHandler);
+Single<MyResponseBody> response =
+                reactiveHttpClient
+                        .post("/myobjects")
+                        .headers(Headers
+                                    .builder()
+                                    .header("header-x", "value-x")
+                                    .build())
+                        .json(new MyRequestBody())
+                        .response(MyResponseBody.class)
+                        .map(CompletedResponse::getBody);
 ```
 
 ## Building

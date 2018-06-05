@@ -3,6 +3,7 @@ package com.sepanniemi.http.client.content;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.Value;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
